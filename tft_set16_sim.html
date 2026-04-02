@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TFT Set 16 ビルド比較シミュレーター</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0f18;--bg1:#111928;--bg2:#161e2e;--bg3:#1c2740;
+  --border:#1e2d42;--border2:#2a3d56;
+  --gold:#c89b3c;--gold2:#dfc87a;
+  --text:#d8e0ec;--text2:#96a8be;--text3:#647890;
+  --rad:6px;--rad2:10px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px}
+.app{max-width:960px;margin:0 auto;padding:1.25rem 1rem 3rem}
+
+.hd{display:flex;align-items:center;gap:10px;padding-bottom:.9rem;margin-bottom:1.1rem;border-bottom:1px solid var(--border)}
+.hd-hex{width:34px;height:34px;background:var(--gold);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#0a0f18;flex-shrink:0}
+.hd-main{font-size:16px;font-weight:600;color:var(--gold2)}
+.hd-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.set-badge{font-size:10px;padding:2px 8px;background:#1c2740;border:1px solid var(--gold);border-radius:20px;color:var(--gold2);white-space:nowrap;align-self:center}
+
+.sec-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:6px;font-weight:500}
+.stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:.9rem}
+@media(max-width:560px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-field{display:flex;flex-direction:column;gap:4px}
+.stat-lbl{font-size:11px;color:var(--text2);line-height:1.3}
+input[type=number]{width:100%;padding:7px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rad);color:var(--text);font-size:13px;font-family:inherit;outline:none;-moz-appearance:textfield;transition:border-color .15s}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]:focus{border-color:var(--gold)}
+select{width:100%;padding:7px 26px 7px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rad);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23647890'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;transition:border-color .15s}
+select:focus{border-color:var(--gold)}
+select option{background:var(--bg2)}
+
+/* build panels */
+.builds-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+@media(max-width:680px){.builds-grid{grid-template-columns:1fr}}
+.build-panel{border:1.5px solid var(--border);border-radius:var(--rad2);overflow:hidden;transition:border-color .2s}
+.build-panel.active{border-color:var(--bc)}
+.build-header{display:flex;align-items:center;gap:8px;padding:.55rem .75rem;background:var(--bg1);border-bottom:1px solid var(--border)}
+.build-dot{width:10px;height:10px;border-radius:50%;background:var(--bc);flex-shrink:0}
+.build-name-lbl{font-size:12px;font-weight:600;color:var(--text);flex:1}
+.build-toggle{font-size:10px;padding:2px 9px;border-radius:12px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;font-family:inherit}
+.build-toggle.on{background:var(--bc);border-color:var(--bc);color:#0a0f18;font-weight:700}
+.build-body{padding:.7rem .75rem;background:var(--bg2)}
+.build-slots{display:flex;flex-direction:column;gap:5px}
+.slot-row{display:flex;align-items:center;gap:6px}
+.slot-idx{font-size:11px;color:var(--text2);width:10px;flex-shrink:0;text-align:center;font-weight:500}
+.slot-badge{font-size:10px;color:var(--text2);min-height:11px;padding-left:16px;line-height:1.3}
+
+/* eff strip */
+.eff-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;padding:.6rem .85rem;background:var(--bg1);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:0 var(--rad2) var(--rad2) 0}
+.eff-stat{display:flex;flex-direction:column;gap:2px;flex:1;min-width:56px}
+.eff-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2)}
+.eff-val{font-size:13px;font-weight:600;color:var(--gold2);line-height:1.2}
+
+/* chart */
+.chart-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--rad2);padding:.9rem 1rem .8rem;margin-bottom:1rem}
+.chart-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;gap:6px}
+.chart-title{font-size:12px;color:var(--text)}
+.chart-legend{display:flex;gap:12px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.leg-line{width:18px;height:2.5px;border-radius:2px;flex-shrink:0}
+.canvas-wrap{position:relative;width:100%;height:300px}
+canvas#chart{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+
+/* comparison table */
+.cmp-wrap{background:var(--bg1);border:1px solid var(--border);border-radius:var(--rad2);overflow:hidden;margin-bottom:1rem}
+.cmp-table{width:100%;border-collapse:collapse;font-size:12px}
+.cmp-table th,.cmp-table td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:right}
+.cmp-table th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);font-weight:500}
+.cmp-table td{color:var(--text)}
+.cmp-table th:first-child,.cmp-table td:first-child{text-align:left}
+.cmp-table tr:last-child td{border-bottom:none}
+.best{color:#4ecf80;font-weight:600}
+.worst{color:#e05050}
+.name-cell{display:flex;align-items:center;gap:6px}
+.name-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* tooltip */
+#tt{position:fixed;pointer-events:none;display:none;background:#141f32;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:11px;z-index:200;min-width:155px;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.tt-time{color:var(--text3);font-size:10px;margin-bottom:6px}
+.tt-r{display:flex;align-items:center;gap:7px;padding:2px 0}
+.tt-dot2{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.tt-nm{color:var(--text2);flex:1}
+.tt-v{font-weight:600;color:var(--text)}
+
+.info-box{background:#0e1820;border:1px solid #1a2d3a;border-left:3px solid #3a6080;border-radius:0 var(--rad) var(--rad) 0;padding:.55rem .75rem;margin-bottom:1rem;font-size:11px;color:#4d7a96;line-height:1.5}
+.note{font-size:10px;color:var(--text3);text-align:right;line-height:1.5}
+a{color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="hd">
+  <div class="hd-hex">TFT</div>
+  <div style="flex:1">
+    <div class="hd-main">ビルド比較シミュレーター</div>
+    <div class="hd-sub">最大3ビルドを同一グラフで比較 ・ Set 16 / Patch 16.7 ・ オフライン対応</div>
+  </div>
+  <div class="set-badge">Set 16</div>
+</div>
+
+
+<div class="sec-lbl">チャンピオン基礎スタッツ（全ビルド共通）</div>
+<div class="stat-grid">
+  <div class="stat-field"><div class="stat-lbl">基礎AD</div><input type="number" id="baseAD" value="60" min="1" max="500" step="1" oninput="update()"></div>
+  <div class="stat-field"><div class="stat-lbl">基礎AS</div><input type="number" id="baseAS" value="0.75" min="0.1" max="2.0" step="0.05" oninput="update()"></div>
+  <div class="stat-field"><div class="stat-lbl">初期マナ</div><input type="number" id="initMana" value="0" min="0" max="200" step="5" oninput="update()"></div>
+  <div class="stat-field"><div class="stat-lbl">最大マナ</div><input type="number" id="maxMana" value="50" min="5" max="250" step="5" oninput="update()"></div>
+  <div class="stat-field"><div class="stat-lbl">スキルダメージ（基本値）</div><input type="number" id="skillDmg" value="250" min="0" max="5000" step="10" oninput="update()"></div>
+  <div class="stat-field"><div class="stat-lbl">スキルタイプ</div>
+    <select id="skillType" onchange="update()">
+      <option value="ap">魔法（AP参照）</option>
+      <option value="ad">物理（AD参照）</option>
+    </select>
+  </div>
+  <div class="stat-field" style="grid-column:span 2"><div class="stat-lbl">ロール</div>
+    <select id="roleSelect" onchange="update()">
+      <option value="marksman">マークスマン　(AA +10 / 秒 0)</option>
+      <option value="fighter">ファイター　(AA +10 / 秒 0)</option>
+      <option value="assassin">アサシン　(AA +10 / 秒 0)</option>
+      <option value="caster" selected>キャスター　(AA +7 / 秒 +2)</option>
+      <option value="tank">タンク　(AA +5 / 秒 0)</option>
+    </select>
+  </div>
+  <div class="stat-field"><div class="stat-lbl">敵 AR（物理防御）</div><input type="number" id="enemyAR" value="50" min="0" max="300" step="5" oninput="update()"></div>
+  <div class="stat-field"><div class="stat-lbl">敵 MR（魔法防御）</div><input type="number" id="enemyMR" value="50" min="0" max="300" step="5" oninput="update()"></div>
+  <div class="stat-field"><div class="stat-lbl">詠唱時間（秒）</div>
+    <select id="castTime" onchange="update()">
+      <option value="0">0.00s　（即時）</option>
+      <option value="0.25">0.25s</option>
+      <option value="0.5" selected>0.50s　（標準）</option>
+      <option value="0.75">0.75s</option>
+      <option value="1.0">1.00s</option>
+      <option value="1.5">1.50s</option>
+      <option value="2.0">2.00s</option>
+    </select>
+  </div>
+  <div class="stat-field"><div class="stat-lbl">マナロック（秒）</div>
+    <select id="manaLock" onchange="update()">
+      <option value="0">0.00s　（なし）</option>
+      <option value="0.5">0.50s</option>
+      <option value="1.0" selected>1.00s　（標準）</option>
+      <option value="1.5">1.50s</option>
+      <option value="2.0">2.00s</option>
+      <option value="3.0">3.00s</option>
+    </select>
+  </div>
+</div>
+
+<div class="sec-lbl">ビルド設定</div>
+<div class="builds-grid" id="builds-grid"></div>
+
+<div class="sec-lbl">選択ビルドの実効値</div>
+<div class="eff-strip">
+  <div class="eff-stat"><div class="eff-lbl">ビルド</div><div class="eff-val" id="e-build">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">有効AD</div><div class="eff-val" id="eAD">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">有効AS</div><div class="eff-val" id="eAS">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">クリ率</div><div class="eff-val" id="eCrit">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">AP</div><div class="eff-val" id="eAP">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">AA毎マナ</div><div class="eff-val" id="eMPA">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">リジェン/秒</div><div class="eff-val" id="eMPS">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">スキルDmg/cast</div><div class="eff-val" id="eSkill">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">AA通過率(AR)</div><div class="eff-val" id="eAR">—</div></div>
+  <div class="eff-stat"><div class="eff-lbl">スキル通過率</div><div class="eff-val" id="eMR2">—</div></div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-hd">
+    <span class="chart-title">累積ダメージ（0〜30秒）</span>
+    <div class="chart-legend" id="chart-legend"></div>
+  </div>
+  <div class="canvas-wrap"><canvas id="chart"></canvas></div>
+</div>
+
+<div class="sec-lbl" style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+  <span>比較サマリー</span>
+  <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:340px">
+    <input type="range" id="cmpTime" min="1" max="30" value="30" step="0.5"
+      style="flex:1;accent-color:var(--gold)"
+      oninput="document.getElementById('cmpTimeVal').textContent=parseFloat(this.value).toFixed(1)+'秒';updateTable()">
+    <span id="cmpTimeVal" style="font-size:12px;color:var(--gold2);min-width:40px;text-align:right;font-weight:600">30.0秒</span>
+  </div>
+</div>
+<div class="cmp-wrap">
+  <table class="cmp-table">
+    <thead><tr>
+      <th>ビルド</th><th>累積ダメージ</th><th>平均DPS</th><th>スキル回数</th><th>初回キャスト</th><th>ベース比</th>
+    </tr></thead>
+    <tbody id="cmp-body"></tbody>
+  </table>
+</div>
+</div>
+
+<div id="tt"><div class="tt-time" id="tt-time"></div><div id="tt-rows"></div></div>
+
+<script>
+// ── Roles ─────────────────────────────────────────────────────────────────────
+const ROLES={
+  marksman:{label:'マークスマン',mpa:10,mps:0},
+  fighter: {label:'ファイター',  mpa:10,mps:0},
+  assassin:{label:'アサシン',    mpa:10,mps:0},
+  caster:  {label:'キャスター',  mpa:7, mps:2},
+  tank:    {label:'タンク',      mpa:5, mps:0},
+};
+
+// ── Items (Patch 16.7) ────────────────────────────────────────────────────────
+const ITEMS=[
+  {name:'─ なし ─',              ad:0,    as:0,    crit:0,    ap:0,  mr:0, mpa:0, amp:0,    special:null,        desc:''},
+  // ADキャリー系
+  {name:'デスブレード',             ad:0.55, as:0,    crit:0,    ap:0,  mr:0, mpa:0, amp:0.10, special:null,        desc:'AD+55% / ダメージ+10%'},
+  {name:'インフィニティエッジ',      ad:0.35, as:0,    crit:0.35, ap:0,  mr:0, mpa:0, amp:0,    special:'ie',        desc:'AD+35% / クリ+35% / スキルクリ可 / クリダメ155%'},
+  {name:'ラストウィスパー',          ad:0.15, as:0.20, crit:0.20, ap:0,  mr:0, mpa:0, amp:0,    special:null,        desc:'AD+15% / AS+20% / クリ+20% / 30%サンダー'},
+  {name:'ジャイアントスレイヤー',    ad:0.15, as:0.15, crit:0,    ap:15, mr:0, mpa:0, amp:0.15, special:null,        desc:'AD+15% / AS+15% / AP+15 / ダメージ+15%'},
+  {name:'グインソーレイジブレード',  ad:0,    as:0.10, crit:0,    ap:10, mr:0, mpa:0, amp:0,    special:'guinsoo',   desc:'AS+10% / AP+10 / 毎秒AS+7%スタック'},
+  {name:'クラーケンの怒り',          ad:0.10, as:0.10, crit:0,    ap:0,  mr:0, mpa:0, amp:0,    special:'kraken',    desc:'AD+10% / AS+10% / 攻撃毎AD+3.5%(15回)→AS+15%'},
+  {name:'ブラッドサースター',        ad:0.15, as:0,    crit:0,    ap:15, mr:0, mpa:0, amp:0,    special:null,        desc:'AD+15% / AP+15 / 吸血+20% / HP40%シールド'},
+  {name:'ナイトエッジ',              ad:0.10, as:0.15, crit:0,    ap:10, mr:0, mpa:0, amp:0,    special:null,        desc:'AD+10% / AS+15% / AP+10 / HP60%で無敵'},
+  {name:'ヘクステックガンブレード',  ad:0.20, as:0,    crit:0,    ap:20, mr:1, mpa:0, amp:0,    special:null,        desc:'AD+20% / AP+20 / 吸血+15% / リジェン+1'},
+  {name:'ジャスティスの手',          ad:0.15, as:0,    crit:0.20, ap:15, mr:1, mpa:0, amp:0,    special:null,        desc:'AD+15%・AP+15(HP50%超×2) / クリ+20% / リジェン+1'},
+  {name:'ストライカーズフレイル',    ad:0,    as:0,    crit:0,    ap:0,  mr:0, mpa:0, amp:0,    special:'flail',     desc:'クリ毎ダメージ+5%スタック（最大+20%）'},
+  {name:'クイックシルバー',          ad:0,    as:0.20, crit:0,    ap:0,  mr:0, mpa:0, amp:0,    special:null,        desc:'AS+20% / 状態異常免疫'},
+  {name:'レッドバフ',                ad:0,    as:0.35, crit:0,    ap:0,  mr:0, mpa:0, amp:0.03, special:null,        desc:'AS+35% / ダメージ+3%'},
+  // AP/キャスター系
+  {name:'ジュエルガントレット',      ad:0,    as:0,    crit:0.35, ap:35, mr:0, mpa:0, amp:0,    special:'jewel',     desc:'AP+35 / クリ+35% / スキルクリ可'},
+  {name:'アーチエンジェルスタッフ',  ad:0,    as:0,    crit:0,    ap:30, mr:1, mpa:0, amp:0,    special:'archangel', desc:'AP+30 / リジェン+1 / 5秒毎AP+20%スタック'},
+  {name:'ブルーバフ',                ad:0.15, as:0,    crit:0,    ap:15, mr:5, mpa:0, amp:0,    special:'bluebuff',  desc:'AD+15% / AP+15 / リジェン+5 / 全ソース+10%'},
+  {name:'モレロノミコン',            ad:0,    as:0,    crit:0,    ap:20, mr:1, mpa:0, amp:0,    special:null,        desc:'AP+20 / HP+150 / リジェン+1'},
+  {name:'ナッシャートゥース',        ad:0,    as:0.10, crit:0,    ap:20, mr:1, mpa:5, amp:0,    special:null,        desc:'AS+10% / AP+20 / AA毎マナ+5 / リジェン+1'},
+  {name:'ラバドンデスキャップ',      ad:0,    as:0,    crit:0,    ap:50, mr:0, mpa:0, amp:0.10, special:null,        desc:'AP+50 / ダメージ+10%'},
+  {name:'ショウジンの矛',            ad:0.15, as:0,    crit:0,    ap:0,  mr:1, mpa:5, amp:0,    special:null,        desc:'AD+15% / AA毎マナ+5 / リジェン+1'},
+  {name:'アダプティブヘルム',        ad:0,    as:0,    crit:0,    ap:0,  mr:3, mpa:0, amp:0,    special:'adaptive',  desc:'MR+20 / リジェン+3 / 全マナ源+15%'},
+  {name:'ボイドスタッフ',            ad:0,    as:0,    crit:0,    ap:30, mr:0, mpa:0, amp:0,    special:null,        desc:'AP+30 / MR貫通'},
+];
+
+// ── Build config ───────────────────────────────────────────────────────────────
+const BUILD_COLORS=['#c89b3c','#4a9edd','#e06b9a'];
+const BUILD_NAMES=['ビルドA','ビルドB','ビルドC'];
+const N=3;
+const builds=Array.from({length:N},()=>({visible:true,items:[0,0,0]}));
+let focusBuild=0;
+let simResults=[];
+let baseResult=null;
+let hovT=-1;
+
+// ── Compute ───────────────────────────────────────────────────────────────────
+function computeCfg(p,idxs){
+  let totAD=0,totAS=0,totCrit=0,totAP=0,totMR=0,totMPA=0,totAmp=0;
+  let hasIE=false,hasJewel=false,hasGuinsoo=false,hasKraken=false;
+  let hasArchangel=false,hasBluebuff=false,hasFlail=false,hasAdaptive=false;
+  idxs.forEach(i=>{
+    const it=ITEMS[i];
+    if(!it||i===0)return;
+    totAD+=it.ad;totAS+=it.as;totCrit+=it.crit;totAP+=it.ap;
+    totMR+=it.mr;totMPA+=it.mpa;totAmp+=it.amp;
+    const s=it.special;
+    if(s==='ie')        hasIE=true;
+    if(s==='jewel')     hasJewel=true;
+    if(s==='guinsoo')   hasGuinsoo=true;
+    if(s==='kraken')    hasKraken=true;
+    if(s==='archangel') hasArchangel=true;
+    if(s==='bluebuff')  hasBluebuff=true;
+    if(s==='flail')     hasFlail=true;
+    if(s==='adaptive')  hasAdaptive=true;
+  });
+  if(hasBluebuff){totAD*=1.10;totAP=totAP*1.10+15*0.10;}
+  const mMul=hasAdaptive?1.15:1.0;
+  const mpaTotal=(p.roleMpa+totMPA)*mMul;
+  const mpsTotal=(p.roleMps+totMR)*mMul;
+  const ad=p.baseAD*(1+totAD);
+  const ap=100+totAP;
+  const critRate=Math.min(1,0.25+totCrit);
+  const critDmg=(hasIE||hasJewel)?1.55:1.40;
+
+  // 防御軽減係数 (note記事の式: 元ダメージ × 100/(100+防御))
+  const arMit=100/(100+Math.max(0,p.enemyAR));  // AA・物理スキル用
+  const mrMit=100/(100+Math.max(0,p.enemyMR));  // 魔法スキル用
+
+  // スキルダメージ: タイプによってスケーリング元が異なる
+  //   魔法(ap): skillDmg × AP/100  → MRで軽減
+  //   物理(ad): skillDmg × (1+totAD) → ARで軽減（AD比例の割合ダメージとして扱う）
+  const skillRaw = p.skillType==='ad'
+    ? p.skillDmg*(1+totAD)
+    : p.skillDmg*(ap/100);
+  const skillCritMul = hasJewel ? (1+critRate*(critDmg-1)) : 1;
+  const skillMit = p.skillType==='ad' ? arMit : mrMit;
+  const skillDmgPerCast = skillRaw * skillCritMul * skillMit;
+
+  return{
+    ad,ap,critRate,critDmg,skillDmgPerCast,
+    totAD,totAS,totAP,totAmp,mpaTotal,mpsTotal,
+    arMit,mrMit,
+    hasGuinsoo,hasKraken,hasArchangel,hasFlail,
+  };
+}
+
+function simulate(p,cfg,maxT=30){
+  const DT=0.01;
+  const pts=[{t:0,dmg:0}];
+  const casts=[];
+  let cumDmg=0,mana=Math.min(p.initMana,p.maxMana),nextAtkT=0;
+  let guinsooSec=0,guinsooStacks=0;
+  let krakenAtks=0,krakenBonused=false,adBonusRate=0;
+  let archangelSec=0,flailStacks=0;
+  let asBonus=cfg.totAS;
+  const{hasGuinsoo,hasKraken,hasArchangel,hasFlail}=cfg;
+  const getAS=()=>Math.min(5.0,p.baseAS*(1+asBonus));
+
+  // 詠唱・マナロック管理
+  // castingUntil  : この時刻まで詠唱中（AA不可・マナ増加不可）
+  // manaLockUntil : この時刻までマナロック（AA可・マナ増加不可）
+  let castingUntil=0, manaLockUntil=0;
+
+  let guard=0;
+  for(let t=DT;t<=maxT+DT*0.5;t+=DT){
+    if(++guard>3e6)break;
+
+    const isCasting   = t <= castingUntil + DT*0.5;
+    const isManaLocked= t <= manaLockUntil + DT*0.5;
+
+    // パッシブマナリジェン（詠唱中・マナロック中は停止）
+    if(!isCasting && !isManaLocked) mana+=cfg.mpsTotal*DT;
+
+    // グインソーのASスタック（詠唱中も時間は進む）
+    if(hasGuinsoo){
+      guinsooSec+=DT;
+      const ns=Math.floor(guinsooSec);
+      if(ns>guinsooStacks){asBonus+=(ns-guinsooStacks)*0.07;guinsooStacks=ns;}
+    }
+    if(hasArchangel)archangelSec+=DT;
+
+    // AA（詠唱中は不可）
+    if(!isCasting && t>=nextAtkT-DT*0.5){
+      nextAtkT+=1/getAS();
+      let effAD=cfg.ad;
+      if(hasKraken){
+        if(krakenAtks<15){krakenAtks++;adBonusRate+=0.035;effAD=p.baseAD*(1+cfg.totAD+adBonusRate);}
+        else if(!krakenBonused){krakenBonused=true;asBonus+=0.15;}
+      }
+      const fa=hasFlail?flailStacks*0.05:0;
+      const aaDmg=effAD*(1+cfg.critRate*(cfg.critDmg-1))*(1+cfg.totAmp+fa)*cfg.arMit;
+      cumDmg+=aaDmg;
+      if(hasFlail&&cfg.critRate>0&&flailStacks<4&&Math.random()<cfg.critRate)flailStacks++;
+      // AAマナ（マナロック中は加算しない）
+      if(!isManaLocked) mana+=cfg.mpaTotal;
+    }
+
+    // スキル発動判定（詠唱中・マナロック中は新たな詠唱開始不可）
+    if(!isCasting && !isManaLocked && mana>=p.maxMana){
+      mana-=p.maxMana;
+      // スキルダメージは詠唱開始時点で付与
+      const ab=hasArchangel?(1+Math.floor(archangelSec/5)*0.20):1;
+      cumDmg+=cfg.skillDmgPerCast*ab*(1+cfg.totAmp);
+      casts.push(t);
+      // 詠唱時間・マナロック時間を設定
+      castingUntil  = t + p.castTime;
+      manaLockUntil = castingUntil + p.manaLock;
+      // 詠唱中はAAも止まるのでnextAtkTを詠唱終了後に押し出す
+      if(nextAtkT < castingUntil) nextAtkT = castingUntil;
+    }
+
+    if(mana>p.maxMana)mana=p.maxMana;
+    if(Math.round(t/DT)*DT%0.1<DT*0.6)pts.push({t:Math.round(t/DT)*DT,dmg:cumDmg});
+  }
+  return{pts,casts};
+}
+
+function simulateBase(p,maxT=30){
+  const DT=0.01;
+  const pts=[{t:0,dmg:0}];
+  const casts=[];
+  let cumDmg=0,mana=Math.min(p.initMana,p.maxMana),nextAtkT=0,guard=0;
+  const arMit=100/(100+Math.max(0,p.enemyAR));
+  const skillMit=(p.skillType==='ad'?arMit:100/(100+Math.max(0,p.enemyMR)));
+  const aaDmg=p.baseAD*(1+0.25*0.4)*arMit;
+  const baseSkillDmg=p.skillDmg*skillMit;
+  let castingUntil=0, manaLockUntil=0;
+  for(let t=DT;t<=maxT+DT*0.5;t+=DT){
+    if(++guard>3e6)break;
+    const isCasting   = t <= castingUntil + DT*0.5;
+    const isManaLocked= t <= manaLockUntil + DT*0.5;
+    if(!isCasting && !isManaLocked) mana+=p.roleMps*DT;
+    if(!isCasting && t>=nextAtkT-DT*0.5){
+      nextAtkT+=1/p.baseAS;
+      cumDmg+=aaDmg;
+      if(!isManaLocked) mana+=p.roleMpa;
+    }
+    if(!isCasting && !isManaLocked && mana>=p.maxMana){
+      mana-=p.maxMana;
+      cumDmg+=baseSkillDmg;
+      casts.push(t);
+      castingUntil  = t + p.castTime;
+      manaLockUntil = castingUntil + p.manaLock;
+      if(nextAtkT < castingUntil) nextAtkT = castingUntil;
+    }
+    if(mana>p.maxMana)mana=p.maxMana;
+    if(Math.round(t/DT)*DT%0.1<DT*0.6)pts.push({t:Math.round(t/DT)*DT,dmg:cumDmg});
+  }
+  return{pts,casts};
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getP(){
+  const r=ROLES[document.getElementById('roleSelect').value]||ROLES.caster;
+  return{
+    baseAD:    +document.getElementById('baseAD').value||60,
+    baseAS:    +document.getElementById('baseAS').value||0.75,
+    roleMpa:r.mpa,roleMps:r.mps,
+    initMana:  +document.getElementById('initMana').value||0,
+    maxMana:   +document.getElementById('maxMana').value||50,
+    skillDmg:  +document.getElementById('skillDmg').value||0,
+    skillType: document.getElementById('skillType').value,
+    enemyAR:   +document.getElementById('enemyAR').value||0,
+    enemyMR:   +document.getElementById('enemyMR').value||0,
+    castTime:  +document.getElementById('castTime').value||0,
+    manaLock:  +document.getElementById('manaLock').value||0,
+  };
+}
+function fmtDmg(v){return v>=10000?(v/1000).toFixed(1)+'k':Math.round(v).toLocaleString('ja-JP');}
+function fmtTick(v){return v>=10000?(v/1000).toFixed(0)+'k':v>=1000?(v/1000).toFixed(1)+'k':''+Math.round(v);}
+function interp(pts,t){
+  for(let i=1;i<pts.length;i++)if(pts[i].t>t)return pts[i-1].dmg;
+  return pts[pts.length-1]?.dmg||0;
+}
+
+// ── Build panel DOM ────────────────────────────────────────────────────────────
+function buildPanels(){
+  const grid=document.getElementById('builds-grid');
+  grid.innerHTML='';
+  builds.forEach((b,bi)=>{
+    const color=BUILD_COLORS[bi];
+    const panel=document.createElement('div');
+    panel.className='build-panel'+(b.visible?' active':'');
+    panel.style.setProperty('--bc',color);
+    panel.id='panel'+bi;
+
+    // header
+    const hd=document.createElement('div');hd.className='build-header';
+    const dot=document.createElement('div');dot.className='build-dot';
+    const nm=document.createElement('span');nm.className='build-name-lbl';nm.textContent=BUILD_NAMES[bi];
+    const tog=document.createElement('button');
+    tog.className='build-toggle'+(b.visible?' on':'');
+    tog.style.setProperty('--bc',color);
+    tog.textContent=b.visible?'表示中':'非表示';
+    tog.onclick=()=>{b.visible=!b.visible;update();};
+    hd.appendChild(dot);hd.appendChild(nm);hd.appendChild(tog);
+    panel.appendChild(hd);
+
+    // body
+    const body=document.createElement('div');body.className='build-body';
+    const slots=document.createElement('div');slots.className='build-slots';
+    b.items.forEach((itemIdx,si)=>{
+      const row=document.createElement('div');row.className='slot-row';
+      const idx=document.createElement('span');idx.className='slot-idx';idx.textContent=si+1;
+      const sel=document.createElement('select');sel.id=`b${bi}s${si}`;
+      ITEMS.forEach((it,j)=>{
+        const o=document.createElement('option');
+        o.value=j;o.textContent=it.name;
+        if(j===itemIdx)o.selected=true;
+        sel.appendChild(o);
+      });
+      sel.onchange=()=>{b.items[si]=+sel.value;focusBuild=bi;update();};
+      sel.onfocus=()=>{focusBuild=bi;updateEffStrip();};
+      row.appendChild(idx);row.appendChild(sel);
+      const badge=document.createElement('div');
+      badge.className='slot-badge';badge.id=`b${bi}s${si}bdg`;
+      badge.textContent=ITEMS[itemIdx]?.desc||'';
+      slots.appendChild(row);slots.appendChild(badge);
+    });
+    body.appendChild(slots);panel.appendChild(body);
+    grid.appendChild(panel);
+  });
+}
+
+function refreshPanels(){
+  builds.forEach((b,bi)=>{
+    const panel=document.getElementById('panel'+bi);
+    if(!panel)return;
+    panel.classList.toggle('active',b.visible);
+    const tog=panel.querySelector('.build-toggle');
+    tog.classList.toggle('on',b.visible);
+    tog.textContent=b.visible?'表示中':'非表示';
+    b.items.forEach((idx,si)=>{
+      const bdg=document.getElementById(`b${bi}s${si}bdg`);
+      if(bdg)bdg.textContent=ITEMS[idx]?.desc||'';
+    });
+  });
+}
+
+// ── Eff strip ─────────────────────────────────────────────────────────────────
+function updateEffStrip(){
+  const p=getP();
+  const cfg=computeCfg(p,builds[focusBuild].items);
+  const color=BUILD_COLORS[focusBuild];
+  const el=document.getElementById('e-build');
+  el.textContent=BUILD_NAMES[focusBuild];el.style.color=color;
+  document.getElementById('eAD').textContent=Math.round(cfg.ad).toLocaleString();
+  document.getElementById('eAS').textContent=(p.baseAS*(1+cfg.totAS)).toFixed(2)+(cfg.hasGuinsoo?'+↑':'');
+  document.getElementById('eCrit').textContent=(cfg.critRate*100).toFixed(0)+'% ('+Math.round(cfg.critDmg*100)+'%)';
+  document.getElementById('eAP').textContent=Math.round(cfg.ap);
+  document.getElementById('eMPA').textContent=cfg.mpaTotal.toFixed(1)+'/atk';
+  document.getElementById('eMPS').textContent=cfg.mpsTotal.toFixed(1)+'/s';
+  document.getElementById('eSkill').textContent=fmtDmg(cfg.skillDmgPerCast);
+  // 防御軽減率を表示
+  const arPct=Math.round(cfg.arMit*100);
+  const mrPct=Math.round(cfg.mrMit*100);
+  document.getElementById('eAR').textContent=arPct+'%通過';
+  document.getElementById('eMR2').textContent=mrPct+'%通過';
+}
+
+// ── Legend ─────────────────────────────────────────────────────────────────────
+function updateLegend(){
+  const leg=document.getElementById('chart-legend');leg.innerHTML='';
+  // baseline
+  const bl=document.createElement('div');bl.className='leg';
+  bl.innerHTML='<div class="leg-line" style="background:#253044;opacity:.6"></div>ベースライン';
+  leg.appendChild(bl);
+  builds.forEach((b,bi)=>{
+    if(!b.visible)return;
+    const el=document.createElement('div');el.className='leg';
+    el.innerHTML=`<div class="leg-line" style="background:${BUILD_COLORS[bi]}"></div>${BUILD_NAMES[bi]}`;
+    leg.appendChild(el);
+  });
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+function drawChart(){
+  const canvas=document.getElementById('chart');
+  const W=canvas.parentElement.clientWidth||800;
+  const H=canvas.parentElement.clientHeight||300;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const PAD={top:14,right:16,bottom:32,left:68};
+  const cW=W-PAD.left-PAD.right,cH=H-PAD.top-PAD.bottom;
+  const maxT=30;
+  const visRes=simResults.filter((_,i)=>builds[i].visible);
+  const maxDmg=Math.max(
+    baseResult?.pts[baseResult.pts.length-1]?.dmg||0,
+    ...visRes.map(r=>r.pts[r.pts.length-1]?.dmg||0),1
+  );
+  const sx=t=>PAD.left+(t/maxT)*cW;
+  const sy=v=>PAD.top+cH-((v/maxDmg)*cH);
+  ctx.clearRect(0,0,W,H);
+
+  // gridlines
+  for(let i=0;i<=5;i++){
+    const v=(maxDmg/5)*i,y=sy(v);
+    ctx.strokeStyle='#151f30';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(PAD.left,y);ctx.lineTo(PAD.left+cW,y);ctx.stroke();
+    ctx.fillStyle='#647890';ctx.font="10px 'Segoe UI',system-ui";ctx.textAlign='right';
+    ctx.fillText(fmtTick(v),PAD.left-4,y+4);
+  }
+  [0,5,10,15,20,25,30].forEach(sec=>{
+    const x=sx(sec);
+    ctx.strokeStyle='#151f30';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,PAD.top);ctx.lineTo(x,PAD.top+cH);ctx.stroke();
+    ctx.fillStyle='#647890';ctx.font="10px 'Segoe UI',system-ui";ctx.textAlign='center';
+    ctx.fillText(sec+'s',x,PAD.top+cH+18);
+  });
+
+  // hover guide
+  if(hovT>=0){
+    ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(sx(hovT),PAD.top);ctx.lineTo(sx(hovT),PAD.top+cH);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // step-line helper
+  function stepLine(pts,color,lw,dash){
+    if(!pts||pts.length<2)return;
+    ctx.strokeStyle=color;ctx.lineWidth=lw;
+    ctx.setLineDash(dash||[]);ctx.beginPath();
+    ctx.moveTo(sx(pts[0].t),sy(pts[0].dmg));
+    for(let i=1;i<pts.length;i++){
+      ctx.lineTo(sx(pts[i].t),sy(pts[i-1].dmg));
+      ctx.lineTo(sx(pts[i].t),sy(pts[i].dmg));
+    }
+    ctx.lineTo(sx(30),sy(pts[pts.length-1].dmg));
+    ctx.stroke();ctx.setLineDash([]);
+  }
+
+  // baseline
+  if(baseResult)stepLine(baseResult.pts,'#253044',1.5,[5,4]);
+
+  // build lines + cast dots
+  simResults.forEach((res,bi)=>{
+    if(!builds[bi].visible)return;
+    const color=BUILD_COLORS[bi];
+    stepLine(res.pts,color,2.5);
+    res.casts.forEach(ct=>{
+      if(ct>30)return;
+      const d=interp(res.pts,ct);
+      ctx.fillStyle=color;ctx.strokeStyle='#0a0f18';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(sx(ct),sy(d),3.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+    });
+  });
+
+  // axes
+  ctx.strokeStyle='#1c2740';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD.left,PAD.top);ctx.lineTo(PAD.left,PAD.top+cH);ctx.lineTo(PAD.left+cW,PAD.top+cH);ctx.stroke();
+}
+
+// ── Comparison table ──────────────────────────────────────────────────────────
+function updateTable(){
+  const T=parseFloat(document.getElementById('cmpTime').value)||30;
+  const tbody=document.getElementById('cmp-body');tbody.innerHTML='';
+
+  const baseDmg=baseResult?interp(baseResult.pts,T):0;
+  const baseCasts=baseResult?baseResult.casts.filter(c=>c<=T).length:0;
+  const baseFirst=baseResult?.casts?.length>0?baseResult.casts[0]:null;
+
+  // baseline row
+  const br=document.createElement('tr');
+  br.innerHTML=`<td><div class="name-cell"><div class="name-dot" style="background:#253044;border:1px dashed #4a6080"></div>ベースライン</div></td>`+
+    `<td>${fmtDmg(baseDmg)}</td>`+
+    `<td>${T>0?Math.round(baseDmg/T).toLocaleString():'─'}</td>`+
+    `<td>${baseCasts}回</td>`+
+    `<td>${baseFirst!==null?baseFirst.toFixed(2)+'秒':'─'}</td>`+
+    `<td>─</td>`;
+  tbody.appendChild(br);
+
+  const dmgAtT=simResults.map((r,i)=>builds[i].visible?interp(r.pts,T):null);
+  const vals=dmgAtT.filter(v=>v!==null);
+  const maxV=Math.max(...vals,0),minV=Math.min(...vals,Infinity);
+
+  simResults.forEach((res,bi)=>{
+    if(!builds[bi].visible)return;
+    const dmg=interp(res.pts,T);
+    const pct=baseDmg>0?((dmg/baseDmg-1)*100).toFixed(1):'─';
+    const isBest=dmg===maxV&&vals.length>1;
+    const isWorst=dmg===minV&&vals.length>1&&dmg!==maxV;
+    const castsN=res.casts.filter(c=>c<=T).length;
+    const firstCast=res.casts.length>0?res.casts[0]:null;
+    const tr=document.createElement('tr');
+    tr.innerHTML=
+      `<td><div class="name-cell"><div class="name-dot" style="background:${BUILD_COLORS[bi]}"></div>${BUILD_NAMES[bi]}</div></td>`+
+      `<td class="${isBest?'best':isWorst?'worst':''}">${fmtDmg(dmg)}</td>`+
+      `<td>${T>0?Math.round(dmg/T).toLocaleString():'─'}</td>`+
+      `<td>${castsN}回</td>`+
+      `<td>${firstCast!==null?firstCast.toFixed(2)+'秒':'─'}</td>`+
+      `<td class="${+pct>0?'best':+pct<0?'worst':''}">${typeof pct==='string'&&pct!=='─'?(+pct>=0?'+':'')+pct+'%':pct}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+document.getElementById('chart').addEventListener('mousemove',e=>{
+  const rect=e.currentTarget.getBoundingClientRect();
+  const t=Math.max(0,Math.min(30,(e.clientX-rect.left-68)/(rect.width-84)*30));
+  hovT=t;
+  const tt=document.getElementById('tt');
+  document.getElementById('tt-time').textContent='TIME: '+t.toFixed(1)+'秒';
+  let rows='';
+  if(baseResult)rows+=`<div class="tt-r"><div class="tt-dot2" style="background:#253044;border:1px dashed #4a6080"></div><span class="tt-nm">ベース</span><span class="tt-v">${fmtDmg(interp(baseResult.pts,t))}</span></div>`;
+  simResults.forEach((res,bi)=>{
+    if(!builds[bi].visible)return;
+    rows+=`<div class="tt-r"><div class="tt-dot2" style="background:${BUILD_COLORS[bi]}"></div><span class="tt-nm">${BUILD_NAMES[bi]}</span><span class="tt-v">${fmtDmg(interp(res.pts,t))}</span></div>`;
+  });
+  document.getElementById('tt-rows').innerHTML=rows;
+  let tx=e.clientX+14,ty=e.clientY-50;
+  tt.style.display='block';
+  if(tx+tt.offsetWidth>window.innerWidth)tx=e.clientX-tt.offsetWidth-14;
+  tt.style.left=tx+'px';tt.style.top=ty+'px';
+  drawChart();
+});
+document.getElementById('chart').addEventListener('mouseleave',()=>{
+  hovT=-1;document.getElementById('tt').style.display='none';drawChart();
+});
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+function update(){
+  const p=getP();
+  simResults=builds.map(b=>simulate(p,computeCfg(p,b.items)));
+  baseResult=simulateBase(p);
+  refreshPanels();
+  updateEffStrip();
+  updateLegend();
+  drawChart();
+  updateTable();
+}
+
+document.getElementById('cmpTime').addEventListener('input',function(){
+  hovT=parseFloat(this.value);
+  document.getElementById('cmpTimeVal').textContent=hovT.toFixed(1)+'秒';
+  updateTable();
+  drawChart();
+});
+
+let rt;
+window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(drawChart,80);});
+
+buildPanels();
+update();
+</script>
+</body>
+</html>
